@@ -1,0 +1,27 @@
+.header {
+  display: flex;
+  user-select: none;
+  border-bottom: 2px solid #2a2a4a;
+  min-width: max-content;
+  background: #0f0f23;
+}
+
+.cell {
+  padding: 0 8px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-right: 1px solid #1a1a3a;
+  flex-shrink: 0;
+}
+
+.cell:hover { background: #1a1a3a; color: #aaa; }
+.sortIndicator { color: #7b8cde; font-size: 10px; }
+.label { pointer-events: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

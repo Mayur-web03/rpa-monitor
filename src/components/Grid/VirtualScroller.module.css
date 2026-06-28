@@ -1,0 +1,24 @@
+.scroller {
+  flex: 1;
+  overflow: auto;          /* both X and Y scroll */
+  min-height: 0;
+  contain: strict;
+  will-change: scroll-position;
+}
+
+.scroller::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroller::-webkit-scrollbar-track { background: #1a1a2e; }
+.scroller::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+.scroller::-webkit-scrollbar-corner { background: #1a1a2e; }
+
+.inner {
+  min-width: max-content;  /* expand to fit all columns */
+  min-height: 100%;
+}
+
+.stickyHeader {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #0f0f23;
+}

@@ -1,0 +1,70 @@
+@keyframes rowFlash {
+  0%   { background: rgba(99, 102, 241, 0.25); }
+  100% { background: transparent; }
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #1a1a2e;
+  contain: layout style;
+  will-change: auto;
+  min-width: max-content;
+  position: relative;
+}
+
+.row:hover { background: #1a1a3a; }
+.odd { background: #0d0d1e; }
+
+.alertFailed {
+  background: rgba(220, 53, 69, 0.12) !important;
+  border-left: 3px solid #dc3545;
+}
+
+.alertNegativeRoi {
+  background: rgba(255, 193, 7, 0.08) !important;
+  border-left: 3px solid #ffc107;
+}
+
+.flash {
+  animation: rowFlash 0.4s ease-out;
+}
+
+.cell {
+  padding: 0 8px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #ccc;
+  border-right: 1px solid #1a1a2e;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.numeric {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.alertDot {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #f43f5e;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  z-index: 1;
+  flex-shrink: 0;
+}

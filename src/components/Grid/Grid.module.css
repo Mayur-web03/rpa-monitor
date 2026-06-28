@@ -1,0 +1,45 @@
+.gridWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #2a2a4a;
+  border-radius: 6px;
+  background: #0a0a1a;
+  min-height: 0;
+}
+
+.emptyWithHeader {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 320px;
+  gap: 10px;
+}
+
+.emptyIcon {
+  font-size: 42px;
+  line-height: 1;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.emptySubtitle {
+  margin: 0;
+  font-size: 13px;
+  color: #475569;
+}
