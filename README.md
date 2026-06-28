@@ -176,4 +176,4 @@ npm run preview
 - ROI anomaly highlighting triggers only if the source dataset contains negative `roi_percent` values — the live stream does not mutate ROI, so this depends on static CSV content
 
 ---
-*Made with ❤️ for Frontend Battle*Virtualization, Sorting, and Search are custom-coded — **no AG Grid, react-window, or TanStack Table used**
+*Made with ❤️ for Frontend Battle *Virtualization, Sorting, and Search are custom-coded — **no AG Grid, react-window, or TanStack Table used**
