@@ -2,9 +2,8 @@
 
 A real-time, client-side RPA (Robotic Process Automation) monitoring dashboard built to handle 50,000+ live-streaming rows with zero backend dependency, custom virtualization, and full client-side analytics.
 
-🔗 **Live Demo:** [your-vercel-url-here]
-🎥 **Walkthrough Video:** [your-video-link-here]
-📦 **Repo:** [your-github-url-here]
+🔗 **Live Demo:** [https://rpa-monitor-one.vercel.app/](https://rpa-monitor-one.vercel.app/)
+📦 **Repo:** [https://github.com/Mayur-web03/rpa-monitor](https://github.com/Mayur-web03/rpa-monitor)
 
 ---
 
@@ -23,14 +22,14 @@ Built entirely with **React + Zustand + Vite**, using a **hand-rolled virtual sc
 | **Live KPI Dashboard** | Total Rows, Active Robots, Total Savings — updates in real time, throttled to avoid main-thread overload |
 | **Number Formatting** | Currency (`$1,234,567`), Percentage (`23.45%`), comma-formatted counts |
 | **Alerts & Highlighting** | Rows auto-highlight on `Failed` status or negative ROI, with tooltip explanation |
-| **Single & Multi-Column Sort** | Click to sort, Shift+Click to stack multiple sort keys with priority indicators |
-| **Pause / Resume** | Pause freezes the UI while the stream continues collecting data in the background; Resume flushes queued updates in animation-frame-batched chunks |
+| **Single & Multi-Column Sort** | Click to sort; **Shift+Click** to stack multiple sort keys with priority indicators (▲1, ▲2) |
+| **Pause / Resume** | Pause freezes the UI while the stream continues collecting data in a background queue; Resume flushes queued updates in animation-frame-batched chunks |
 | **Layout Persistence** | Filters, sort order, and search state persist across page refresh via LocalStorage |
 | **Dropdown Filters** | Department, Industry, Automation Type |
-| **Custom Virtualized Grid** | Hand-built virtual scroller — renders only ~20–30 DOM rows regardless of dataset size (no AG Grid / react-window / TanStack Table) |
-| **Fuzzy Search** | Multi-word, any-order matching across all visible fields |
-| **Snapshot Export (CSV)** | Exports the *currently sorted + filtered* dataset to CSV, chunk-processed via `setTimeout` to avoid blocking the main thread, even on 50k+ rows |
-| **Analytics View** | On pause, toggling "Analytics View" renders a frozen-snapshot dashboard using **Chart.js** — Status Distribution, Savings by Department, Avg ROI by Industry, and Automation Type Breakdown |
+| **Custom Virtualized Grid** | Hand-built virtual scroller — renders only ~20–30 DOM rows regardless of dataset size. **No AG Grid, react-window, or TanStack Table.** |
+| **Fuzzy Search** | Multi-word, any-order matching across all visible fields (e.g. `Cloud Tata Completed`) |
+| **Snapshot Export (CSV)** | Exports the *currently sorted + filtered* dataset to CSV, chunk-processed via `setTimeout` to avoid blocking the main thread |
+| **Analytics View** | On pause, toggling "📊 Analytics View" renders a frozen-snapshot dashboard using **Chart.js** — Status Distribution, Savings by Department, Avg ROI by Industry, Automation Type Breakdown |
 
 ---
 
@@ -41,7 +40,7 @@ rpa-monitor/
 
 │   ├── rpa_database_2026.csv     # Static dataset (50k rows)
 
-│   ├── dataStream.js             # Official telemetry firehose engine (200ms ticks)
+│   ├── dataStream.js             # Telemetry firehose engine (200ms ticks)
 
 │   └── csvWorker.js              # Web Worker — parses CSV off the main thread
 
@@ -59,7 +58,7 @@ rpa-monitor/
 
 │   │   ├── Search/SearchBar.jsx
 
-│   │   ├── Analytics/AnalyticsView.jsx   # Chart.js powered analytics overlay
+│   │   ├── Analytics/AnalyticsView.jsx   # Chart.js analytics overlay
 
 │   │   └── Common/PauseButton.jsx
 
@@ -67,21 +66,21 @@ rpa-monitor/
 
 │   ├── hooks/
 
-│   │   ├── useTelemetry.js       # Worker-driven initial bulk load → live stream handoff
+│   │   ├── useTelemetry.js       # Worker-driven bulk load → live stream handoff
 
-│   │   ├── useVirtualGrid.js     # Scroll-position → visible row range calculation
+│   │   ├── useVirtualGrid.js     # Scroll-position → visible row range
 
-│   │   └── useFilters.js         # Throttled, memoized filter+search+sort pipeline
+│   │   └── useFilters.js         # Throttled, async filter+search+sort pipeline
 
 │   │
 
 │   ├── store/
 
-│   │   ├── telemetryStore.js     # Core state engine — rows, KPI, pause/resume, batching
+│   │   ├── telemetryStore.js     # Core state — rows, KPI, pause/resume, batching
 
 │   │   ├── selectors.js          # Pure filter/search/sort derivation logic
 
-│   │   └── uiStore.js            # UI state — sort keys, filters, search, persisted layout
+│   │   └── uiStore.js            # UI state — sort keys, filters, search, persistence
 
 │   │
 
@@ -95,36 +94,41 @@ rpa-monitor/
 
 │       └── formatter.js          # Currency / percent / number formatting
 
-│
-
-├── Architecture.md
-
-└── package.json
-
 ---
 
 ## ⚙️ Key Engineering Decisions
 
 ### 1. Initial Bulk Load vs. Live Stream Separation
-The official `dataStream.js` firehose only sends small randomized batches (5–50 rows/tick) — it does not bulk-deliver the full dataset. To avoid showing a slowly-trickling, incomplete grid on first load, a **dedicated Web Worker (`csvWorker.js`)** parses the entire CSV off the main thread and delivers it in progressive chunks. Only once the worker signals `done` does the UI unlock (`isFullyLoaded`) and the live `dataStream.js` stream is started — ensuring users always see a complete, ready dataset before any rendering happens.
+The official `dataStream.js` firehose only sends small randomized batches (5–50 rows/tick) — it does not bulk-deliver the full dataset. To avoid a slowly-trickling grid on first load, a **dedicated Web Worker (`csvWorker.js`)** parses the entire CSV off the main thread in progressive chunks. Only once the worker signals `done` does the UI unlock (`isFullyLoaded`) and the live stream start — ensuring users always see a complete dataset before any interaction.
 
 ### 2. Avoiding Main-Thread Re-render Storms
-The live stream mutates the `rows` object reference every ~200ms. Naively subscribing to `rows` at the App root caused full-tree re-renders on every tick, tanking FPS to single digits. Fixed by:
-- Removing root-level `rows` subscriptions — components only subscribe to the specific slices they need (`kpi`, `isPaused`, etc.)
-- Throttling derived filter/sort/search computation (`useFilters.js`) to a fixed interval, decoupled from the raw stream tick rate
-- Using `getState()` for one-off reads (e.g. CSV export) instead of reactive subscriptions
+The live stream mutates state every ~200ms. Naively subscribing to `rows` at the App root caused full-tree re-renders on every tick, dropping FPS to single digits. Fixed by:
+- Components subscribe only to the specific slices they need (`kpi`, `isPaused`, etc.) — not the full `rows` object
+- Derived filter/sort/search computation (`useFilters.js`) is throttled to a fixed interval, decoupled from the raw stream tick rate
+- `getState()` used for one-off reads (e.g. CSV export) instead of reactive subscriptions
 
-### 3. Custom Virtualization
-No AG Grid, react-window, or TanStack Table. The virtual scroller calculates the visible row range from scroll position + fixed row height, rendering only the rows currently in (or near) the viewport — keeping DOM node count constant regardless of whether the dataset is 500 or 50,000 rows.
+### 3. Custom Virtualization — No Libraries
+**Virtualization, Sorting, and Search are entirely custom-coded with zero external dependencies for these functions.**
+The virtual scroller calculates visible row range from scroll position + fixed row height, keeping DOM node count constant (~20–30 nodes) regardless of whether the dataset is 500 or 50,000 rows.
 
-### 4. Multi-Column Sort Performance
-Initial implementation used `localeCompare` with `{ numeric: true }` on every comparison, which is significantly slower than primitive comparison at scale. Replaced with a pre-computed comparator pipeline using direct numeric subtraction and plain string comparison, sorting only the already-filtered subset rather than the full 50k-row set.
+### 4. Non-Blocking Async Sort Engine
+Sorting 50k rows synchronously on the main thread freezes the UI. The custom `multiSort` engine:
+- Uses a pre-computed comparator pipeline with direct numeric subtraction and plain string comparison (no `localeCompare` overhead — significantly faster at scale)
+- For datasets exceeding 10,000 rows, sort is deferred via `setTimeout(0)` — yielding the main thread before executing, keeping interactions responsive
+- Sorts only the already-filtered subset, not the full 50k row set
+- **Multi-column sort:** Click any column header to sort; **Shift+Click** additional headers to stack sort keys. Priority order shown with indicators (▲1, ▲2, ▲3)
 
-### 5. Memory Stability
-Verified via Chrome DevTools heap snapshots taken several minutes apart under continuous streaming — heap size fluctuates (rises with new batches, falls after GC) but does not grow unbounded, confirming no persistent memory leak under sustained load.
+### 5. Queue-Based Pause/Resume with Instant KPI Sync
+When paused, incoming stream batches are pushed into a `pendingQueue` (capped at 500 entries) rather than discarded. On pause, KPI is recomputed instantly from current rows — no stale 500ms debounce. On resume, the queue is flushed in `requestAnimationFrame`-batched chunks to prevent a single large re-render.
 
-### 6. Client-Side Only
-No server, no backend API, no Node/Express/Firebase/Supabase. CSV parsing, state management, sorting, filtering, search, and CSV export are all performed entirely in the browser — using Web Workers for CSV parsing and the Blob API for export, both to avoid blocking the main thread.
+### 6. Analytics View — Memory-Safe Chart.js Integration
+The Analytics overlay renders a frozen snapshot of data taken at pause-time (`getSnapshot()`), ensuring charts never reflect mid-stream state. All Chart.js instances are stored in a ref array and explicitly destroyed (`chart.destroy()`) both on re-render and unmount — preventing the canvas memory leaks that Chart.js is known for. `animation: false` is set on all charts for immediate render performance on large datasets.
+
+### 7. String Interning for Memory Stability
+Repetitive string values (`"COMPLETED"`, `"Finance"`, `"Email Automation"`) were creating millions of duplicate heap allocations under continuous streaming. A global `STRING_POOL` interns these values on first write — subsequent rows reuse the same reference, confirmed via Chrome DevTools heap snapshots showing stable, non-growing string counts.
+
+### 8. Client-Side Only
+No server, no backend API, no Node/Express/Firebase/Supabase. CSV parsing, state management, sorting, filtering, search, and export all run in the browser — Web Workers for parsing, Blob API for export.
 
 ---
 
@@ -135,7 +139,7 @@ npm install
 npm run dev
 ```
 
-App runs at `http://localhost:5173` (or the port Vite assigns).
+App runs at `http://localhost:5173`
 
 ## 📦 Build
 
@@ -148,25 +152,26 @@ npm run preview
 
 ## 🧪 How to Verify Key Behaviors
 
-- **Pause/Resume:** Pause the stream, watch the "Queued Updates" counter grow, then Resume to see it flush.
-- **Multi-sort:** Click a column header, then Shift+Click another — priority indicators (▲1, ▲2) appear.
-- **Fuzzy Search:** Try out-of-order multi-word queries (e.g. `Cloud Tata Completed`).
-- **Layout Persistence:** Apply filters/sort, refresh the page — state restores from LocalStorage.
-- **Analytics View:** Pause the stream, click "📊 Analytics View" to see a Chart.js-powered breakdown of the frozen snapshot.
-- **Snapshot Export:** Apply any filter/sort, click "⬇ Export CSV" — the exported file matches exactly what's visible in the grid.
+- **Pause/Resume:** Pause the stream, watch the "Queued Updates" counter grow, then Resume to see it flush
+- **Multi-sort:** Click a column header, then **Shift+Click** another — priority indicators (▲1, ▲2) appear on headers
+- **Fuzzy Search:** Try out-of-order multi-word queries like `Cloud Tata Completed`
+- **Layout Persistence:** Apply filters/sort, refresh the page — state restores from LocalStorage
+- **Analytics View:** Pause the stream, click "📊 Analytics View" to see Chart.js breakdown of the frozen snapshot
+- **Snapshot Export:** Apply any filter/sort, click "⬇ Export CSV" — exported file matches exactly what's visible in the grid
 
 ---
 
 ## 🛠️ Tech Stack
 
 - **React 18** + **Vite**
-- **Zustand** for state management
-- **Chart.js** for the Analytics View (only library used for visualization, per bounty constraints)
-- **Web Workers** for off-main-thread CSV parsing
-- Vanilla CSS Modules — no UI component libraries
+- **Zustand** — state management
+- **Chart.js** — Analytics View only (only visualization library used)
+- **Web Workers** — off-main-thread CSV parsing
+- Vanilla CSS Modules — zero UI component libraries
 
 ---
 
 ## 📋 Known Limitations
 
-- ROI anomaly highlighting (negative ROI) triggers only if the source dataset contains negative `roi_percent` values — the live stream does not mutate ROI, so this depends entirely on the static CSV content.
+- ROI anomaly highlighting triggers only if the source dataset contains negative `roi_percent` values — the live stream does not mutate ROI, so this depends on static CSV content
+- Virtualization, Sorting, and Search are custom-coded — **no AG Grid, react-window, or TanStack Table used**
