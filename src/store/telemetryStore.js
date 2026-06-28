@@ -50,7 +50,7 @@ function computeKPI(rows, rowIds) {
 function scheduleKPI(rows, rowIds, setFn) {
   if (kpiTimer) return
   kpiTimer = setTimeout(() => {
-    kpiTimer = null   // sabse pehle reset, try block se bahar
+    kpiTimer = null
     try {
       const kpi = computeKPI(rows, rowIds)
       setFn({ kpi })
@@ -89,8 +89,8 @@ export const useTelemetryStore = create((set, get) => ({
   isFullyLoaded: false,
   isPaused: false,
   pendingQueue: [],
-  pendingCount: 0,      // judges ko dikhane ke liye
-  isFlushing: false,    // flush animation ke liye
+  pendingCount: 0,
+  isFlushing: false,
   loadStartTime: Date.now(),
   kpi: { totalRows: 0, activeRobots: 0, totalSavings: 0 },
 
@@ -155,9 +155,12 @@ export const useTelemetryStore = create((set, get) => ({
     })
   },
 
-  // ⚠️ FIX: pause hote hi turant accurate KPI compute karo —
-  // stale 500ms debounce timer pe depend mat karo, warna
-  // "Total Rows" badge aur Analytics snapshot mismatch ho jaate hain
+  // getSnapshot — AnalyticsView ke liye frozen array
+  getSnapshot: () => {
+    const { rows, rowIds } = get()
+    return rowIds.map(id => rows[id]).filter(Boolean)
+  },
+
   pause: () => {
     const { rows, rowIds } = get()
 
@@ -174,12 +177,10 @@ export const useTelemetryStore = create((set, get) => ({
     const { pendingQueue, _mergeBatch } = get()
     const queuedCount = pendingQueue.length
 
-    // Pehle state reset karo
     set({ isPaused: false, pendingQueue: [], pendingCount: 0, isFlushing: queuedCount > 0 })
 
     if (queuedCount > 0) {
       flushInChunks(pendingQueue, _mergeBatch, () => {
-        // Flush complete — turant accurate KPI bhi sync karo
         const { rows, rowIds } = get()
         if (kpiTimer) {
           clearTimeout(kpiTimer)

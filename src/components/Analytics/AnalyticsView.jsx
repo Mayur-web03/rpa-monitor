@@ -1,4 +1,3 @@
-// src/components/Analytics/AnalyticsView.jsx
 import React, { useEffect, useRef, useMemo } from 'react'
 import { Chart, registerables } from 'chart.js'
 import { useTelemetryStore } from '../../store/telemetryStore'
@@ -84,10 +83,9 @@ function KpiBadge({ label, value }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function AnalyticsView() {
-  const close  = useAnalyticsStore(s => s.close)
-  const rows   = useTelemetryStore(s => s.rows)
-  const rowIds = useTelemetryStore(s => s.rowIds)
-  const kpi    = useTelemetryStore(s => s.kpi)
+  const close       = useAnalyticsStore(s => s.close)
+  const kpi         = useTelemetryStore(s => s.kpi)
+  const getSnapshot = useTelemetryStore(s => s.getSnapshot)
 
   const statusRef  = useRef(null)
   const deptRef    = useRef(null)
@@ -95,13 +93,12 @@ export function AnalyticsView() {
   const savingsRef = useRef(null)
   const charts     = useRef([])
 
-  // Frozen snapshot at mount — stream paused hai toh data change nahi hoga
-  const snapshot = useMemo(() => {
-    return rowIds.map(id => rows[id]).filter(Boolean)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // getSnapshot() — mount pe ek baar, stream paused hai toh data stale nahi hoga
+  const snapshot = useMemo(() => getSnapshot(), []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    charts.current.forEach(c => c.destroy())
+    // Pehle purane charts destroy karo
+    Object.values(charts.current).forEach(c => c?.destroy())
     charts.current = []
 
     // ── 1. Status Distribution — Doughnut ────────────────────────────────────
@@ -121,6 +118,7 @@ export function AnalyticsView() {
           }],
         },
         options: {
+          animation: false,
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
@@ -158,6 +156,7 @@ export function AnalyticsView() {
           }],
         },
         options: {
+          animation: false,
           indexAxis: 'y',
           responsive: true,
           maintainAspectRatio: false,
@@ -203,6 +202,7 @@ export function AnalyticsView() {
           }],
         },
         options: {
+          animation: false,
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
@@ -242,6 +242,7 @@ export function AnalyticsView() {
           }],
         },
         options: {
+          animation: false,
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
@@ -260,7 +261,7 @@ export function AnalyticsView() {
     )
 
     return () => {
-      charts.current.forEach(c => c.destroy())
+      Object.values(charts.current).forEach(c => c?.destroy())
       charts.current = []
     }
   }, [snapshot])

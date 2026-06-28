@@ -1,8 +1,6 @@
-// Pehle ye helper add karo
 function toComparable(val) {
   if (val == null) return null
   if (typeof val === 'number') return val
-  // String se number try karo — "154.00%" ya "154" dono handle
   const n = parseFloat(String(val).replace(/[^0-9.-]/g, ''))
   return isFinite(n) ? n : String(val)
 }
@@ -38,5 +36,17 @@ export function multiSort(rows, sortKeys) {
       if (cmp !== 0) return cmp * mul
     }
     return 0
+  })
+}
+
+export function multiSortAsync(rows, sortKeys) {
+  return new Promise(resolve => {
+    if (rows.length <= 10000) {
+      resolve(multiSort(rows, sortKeys))
+      return
+    }
+    setTimeout(() => {
+      resolve(multiSort(rows, sortKeys))
+    }, 0)
   })
 }
