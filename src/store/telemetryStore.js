@@ -33,20 +33,68 @@ function internRow(row) {
   return row
 }
 
+function computeKPI(rows, rowIds) {
+  let totalSavings = 0
+  let activeRobots = 0
+  const len = rowIds.length
+  for (let i = 0; i < len; i++) {
+    const r = rows[rowIds[i]]
+    if (!r) continue
+    const savings = Number(r.annual_savings_usd)
+    if (isFinite(savings)) totalSavings += savings
+    if (r.project_status === 'Active') activeRobots++
+  }
+  return { totalRows: len, activeRobots, totalSavings }
+}
+
+function scheduleKPI(rows, rowIds, setFn) {
+  if (kpiTimer) return
+  kpiTimer = setTimeout(() => {
+    kpiTimer = null   // sabse pehle reset, try block se bahar
+    try {
+      const kpi = computeKPI(rows, rowIds)
+      setFn({ kpi })
+    } catch (err) {
+      console.error('KPI compute failed:', err)
+    }
+  }, 500)
+}
+
+function flushInChunks(queue, mergeFn, onComplete) {
+  if (queue.length <= MAX_PENDING) {
+    mergeFn(queue)
+    setTimeout(onComplete, 100)
+    return
+  }
+
+  const CHUNK = 250
+  let i = 0
+  function tick() {
+    mergeFn(queue.slice(i, i + CHUNK))
+    i += CHUNK
+    if (i < queue.length) {
+      requestAnimationFrame(tick)
+    } else {
+      onComplete()
+    }
+  }
+  requestAnimationFrame(tick)
+}
+
 export const useTelemetryStore = create((set, get) => ({
   rows: {},
   rowIds: [],
   rowExists: {},
   isLoaded: false,
-  isFullyLoaded: false,  
+  isFullyLoaded: false,
   isPaused: false,
   pendingQueue: [],
-  pendingCount: 0,      
-  isFlushing: false,    
+  pendingCount: 0,      // judges ko dikhane ke liye
+  isFlushing: false,    // flush animation ke liye
   loadStartTime: Date.now(),
   kpi: { totalRows: 0, activeRobots: 0, totalSavings: 0 },
 
-  setFullyLoaded: () => set({ isFullyLoaded: true }),   
+  setFullyLoaded: () => set({ isFullyLoaded: true }),
 
   applyBatch: (batch) => {
     const { isPaused, pendingQueue } = get()
@@ -107,68 +155,39 @@ export const useTelemetryStore = create((set, get) => ({
     })
   },
 
-  pause: () => set({ isPaused: true }),
+  // ⚠️ FIX: pause hote hi turant accurate KPI compute karo —
+  // stale 500ms debounce timer pe depend mat karo, warna
+  // "Total Rows" badge aur Analytics snapshot mismatch ho jaate hain
+  pause: () => {
+    const { rows, rowIds } = get()
+
+    if (kpiTimer) {
+      clearTimeout(kpiTimer)
+      kpiTimer = null
+    }
+
+    const kpi = computeKPI(rows, rowIds)
+    set({ isPaused: true, kpi })
+  },
 
   resume: () => {
     const { pendingQueue, _mergeBatch } = get()
     const queuedCount = pendingQueue.length
 
-    
+    // Pehle state reset karo
     set({ isPaused: false, pendingQueue: [], pendingCount: 0, isFlushing: queuedCount > 0 })
 
     if (queuedCount > 0) {
       flushInChunks(pendingQueue, _mergeBatch, () => {
-        
-        set({ isFlushing: false })
+        // Flush complete — turant accurate KPI bhi sync karo
+        const { rows, rowIds } = get()
+        if (kpiTimer) {
+          clearTimeout(kpiTimer)
+          kpiTimer = null
+        }
+        const kpi = computeKPI(rows, rowIds)
+        set({ isFlushing: false, kpi })
       })
     }
   },
 }))
-
-function scheduleKPI(rows, rowIds, setFn) {
-  if (kpiTimer) return
-  kpiTimer = setTimeout(() => {
-    kpiTimer = null   
-    try {
-      const kpi = computeKPI(rows, rowIds)
-      setFn({ kpi })
-    } catch (err) {
-      console.error('KPI compute failed:', err)
-    }
-  }, 500)
-}
-
-function computeKPI(rows, rowIds) {
-  let totalSavings = 0
-  let activeRobots = 0
-  const len = rowIds.length
-  for (let i = 0; i < len; i++) {
-    const r = rows[rowIds[i]]
-    if (!r) continue
-    const savings = Number(r.annual_savings_usd)
-    if (isFinite(savings)) totalSavings += savings
-    if (r.project_status === 'Active') activeRobots++
-  }
-  return { totalRows: len, activeRobots, totalSavings }
-}
-
-function flushInChunks(queue, mergeFn, onComplete) {
-  if (queue.length <= MAX_PENDING) {
-    mergeFn(queue)
-    setTimeout(onComplete, 100)
-    return
-  }
-
-  const CHUNK = 250
-  let i = 0
-  function tick() {
-    mergeFn(queue.slice(i, i + CHUNK))
-    i += CHUNK
-    if (i < queue.length) {
-      requestAnimationFrame(tick)
-    } else {
-      onComplete()
-    }
-  }
-  requestAnimationFrame(tick)
-}
